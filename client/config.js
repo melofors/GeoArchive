@@ -1,4 +1,8 @@
 // client/config.js
-// Use relative URLs since the API is on the same domain
-// This avoids CORS issues with credentials
-export const API_BASE_URL = "";
+// Auto-detect: use production backend when developing locally
+const isLocalDev = window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1';
+
+export const API_BASE_URL = isLocalDev 
+  ? "https://openmediamap.com"  // Point to production backend when local
+  : "";                          // Use relative URLs in production (nginx proxies)

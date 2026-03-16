@@ -70,7 +70,11 @@ app.use(
       "http://localhost:5500",
       "http://127.0.0.1:5500",
       "http://localhost:3000",
-      "http://127.0.0.1:3000"
+      "http://127.0.0.1:3000",
+      "http://geoarchive.org",
+      "https://geoarchive.org",
+      "http://www.geoarchive.org",
+      "https://www.geoarchive.org",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -112,9 +116,7 @@ app.use("/admin", express.static(path.join(__dirname, "admin")));
 // -----------------------------
 // CORRECT - /api/user/:username
 app.use("/api/user", userRoutes);
-// Keep old /user/:username for server-rendered
 app.use("/user", userRoutes);
-
 app.use("/api/submissions", require("./routes/submissions"));
 
 app.get("/api/admin/actions", requireAdmin, async (req, res) => {
