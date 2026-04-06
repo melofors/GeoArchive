@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/map", "destination": "/map.html" },
+    { "source": "/database", "destination": "/database.html" },
+    { "source": "/contribute", "destination": "/contribute.html" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/forum", "destination": "/forum.html" },
+    { "source": "/recent", "destination": "/recent.html" }
+  ]
+}
