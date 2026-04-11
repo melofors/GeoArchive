@@ -118,6 +118,7 @@ app.use("/admin", express.static(path.join(__dirname, "admin")));
 app.use("/api/user", userRoutes);
 app.use("/user", userRoutes);
 app.use("/api/submissions", require("./routes/submissions"));
+app.use('/api/forum', require('./routes/forum'));
 
 app.get("/api/admin/actions", requireAdmin, async (req, res) => {
   try {

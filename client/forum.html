@@ -7,24 +7,18 @@
   <link rel="stylesheet" href="style.css"/>
   <script type="module" src="auth.js"></script>
   <link rel="icon" type="image/x-icon" href="logos/favicon.png">
-  <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YRV1RVTQ89"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-
     gtag('config', 'G-YRV1RVTQ89');
   </script>
 </head>
 <body>
 
-<!-- TOPNAV -->
 <div class="topnav">
-  <a href="/forum">
-    <img src="logos/logo2.png" class="logo2" alt="Logo">
-  </a>
-
+  <a href="/"><img src="logos/logo2.png" class="logo" alt="Logo"></a>
   <div class="nav-links">
     <div class="topnav-left">
       <a class="page" href="/">Home</a>
@@ -34,7 +28,6 @@
       <a class="page" href="/about">About</a>
       <a id="admin-link" class="page" href="/admin" style="display:none">Admin</a>
     </div>
-
     <div class="topnav-right">
       <div id="topnav-auth">
         <a class="page" href="/login" id="login-link">Login</a>
@@ -45,25 +38,141 @@
 </div>
 
 <div class="main-forum-layout">
-
   <nav class="vertical-tabs" role="tablist" aria-orientation="vertical">
-    <div id="user-link-container" class="login-link">
-      <a href="/login" id="login-link">Login</a>
-    </div>
-
-    <a href="/forum" role="tab" class="tab">Forum</a>
+    <div id="user-link-container" class="login-link"></div>
+    <a href="/forum" role="tab" class="tab active">Forum</a>
     <a href="/recent" role="tab" class="tab">Recent Contributions</a>
   </nav>
 
-  <main class="forumcontent" role="tabpanel">
-    <p>This page is currently under development.</p>
-    <p>In the meantime, feel free to join our Discord server:</p>
-    <a target="_blank" href="https://discord.gg/EvDQ8YCJKv">
-      https://discord.gg/EvDQ8YCJKv
-    </a>
-  </main>
+  <main class="forumcontent">
 
+    <div class="forum-header">
+      <h1>Forum</h1>
+      <button id="new-thread-btn" class="forum-btn" style="display:none">+ New Thread</button>
+    </div>
+
+    <!-- New thread form (hidden by default) -->
+    <div id="new-thread-form" class="forum-form" style="display:none">
+      <h3>New Thread</h3>
+      <input type="text" id="thread-title" placeholder="Title" maxlength="200">
+      <textarea id="thread-body" rows="6" placeholder="Write your post..." maxlength="10000"></textarea>
+      <div class="forum-form-actions">
+        <button id="submit-thread-btn" class="forum-btn">Post</button>
+        <button id="cancel-thread-btn" class="forum-btn forum-btn-secondary">Cancel</button>
+      </div>
+      <p id="thread-error" class="forum-error"></p>
+    </div>
+
+    <!-- Thread list -->
+    <div id="threads-container">
+      <p class="forum-loading">Loading threads...</p>
+    </div>
+
+  </main>
 </div>
+
+<script type="module">
+  import { API_BASE_URL } from './config.js';
+  import { auth, onAuthStateChanged } from './auth.js';
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function timeAgo(dateStr) {
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+  }
+
+  // Show new thread button only when logged in
+  onAuthStateChanged(auth, (user) => {
+    document.getElementById('new-thread-btn').style.display = user ? 'inline-block' : 'none';
+  });
+
+  // Toggle new thread form
+  document.getElementById('new-thread-btn').addEventListener('click', () => {
+    document.getElementById('new-thread-form').style.display = 'block';
+    document.getElementById('new-thread-btn').style.display = 'none';
+    document.getElementById('thread-title').focus();
+  });
+
+  document.getElementById('cancel-thread-btn').addEventListener('click', () => {
+    document.getElementById('new-thread-form').style.display = 'none';
+    document.getElementById('new-thread-btn').style.display = 'inline-block';
+    document.getElementById('thread-title').value = '';
+    document.getElementById('thread-body').value = '';
+    document.getElementById('thread-error').textContent = '';
+  });
+
+  // Submit new thread
+  document.getElementById('submit-thread-btn').addEventListener('click', async () => {
+    const title = document.getElementById('thread-title').value.trim();
+    const body = document.getElementById('thread-body').value.trim();
+    const errorEl = document.getElementById('thread-error');
+    const btn = document.getElementById('submit-thread-btn');
+
+    if (!title) { errorEl.textContent = 'Please enter a title.'; return; }
+    if (!body) { errorEl.textContent = 'Please enter a body.'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Posting...';
+    errorEl.textContent = '';
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(`${API_BASE_URL}/api/forum/threads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ title, body })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        window.location.href = `/thread/${data.id}`;
+      } else {
+        errorEl.textContent = data.error || 'Failed to post thread.';
+      }
+    } catch (err) {
+      errorEl.textContent = 'Network error. Please try again.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Post';
+    }
+  });
+
+  // Load threads
+  async function loadThreads() {
+    const container = document.getElementById('threads-container');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/forum/threads`);
+      const threads = await res.json();
+
+      if (threads.length === 0) {
+        container.innerHTML = '<p class="forum-empty">No threads yet. Be the first to post!</p>';
+        return;
+      }
+
+      container.innerHTML = threads.map(t => `
+        <a href="/thread/${t.id}" class="thread-card">
+          <div class="thread-card-main">
+            <span class="thread-title">${escapeHtml(t.title)}</span>
+            <span class="thread-meta">by <strong>@${escapeHtml(t.author_username)}</strong> · ${timeAgo(t.created_at)}</span>
+          </div>
+          <div class="thread-card-right">
+            <span class="thread-replies">${t.reply_count} ${t.reply_count === 1 ? 'reply' : 'replies'}</span>
+          </div>
+        </a>
+      `).join('');
+    } catch (err) {
+      container.innerHTML = '<p class="forum-error">Failed to load threads.</p>';
+    }
+  }
+
+  loadThreads();
+</script>
 
 </body>
 </html>

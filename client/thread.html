@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thread — GeoArchive</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script type="module" src="auth.js"></script>
+  <link rel="icon" type="image/x-icon" href="logos/favicon.png">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-YRV1RVTQ89"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-YRV1RVTQ89');
+  </script>
+</head>
+<body>
+
+<div class="topnav">
+  <a href="/"><img src="logos/logo.png" class="logo" alt="Logo"></a>
+  <div class="nav-links">
+    <div class="topnav-left">
+      <a class="page" href="/map">Map</a>
+      <a class="page" href="/database">Database</a>
+      <a class="page" href="/contribute">Contribute</a>
+      <a class="page" href="/about">About</a>
+      <a id="admin-link" class="page" href="/admin" style="display:none">Admin</a>
+    </div>
+    <div class="topnav-right">
+      <div id="topnav-auth">
+        <a class="page" href="/login" id="login-link">Login</a>
+      </div>
+      <a class="page" href="/forum">Forum</a>
+    </div>
+  </div>
+</div>
+
+<div class="main-forum-layout">
+  <nav class="vertical-tabs" role="tablist" aria-orientation="vertical">
+    <div id="user-link-container" class="login-link"></div>
+    <a href="/forum" role="tab" class="tab">Forum</a>
+    <a href="/recent" role="tab" class="tab">Recent Contributions</a>
+  </nav>
+
+  <main class="forumcontent">
+
+    <a href="/forum" class="forum-back">← Back to Forum</a>
+
+    <div id="thread-container">
+      <p class="forum-loading">Loading thread...</p>
+    </div>
+
+    <div id="posts-container"></div>
+
+    <!-- Reply form -->
+    <div id="reply-section" style="display:none">
+      <h3 class="forum-reply-heading">Post a Reply</h3>
+      <div class="forum-form">
+        <textarea id="reply-body" rows="5" placeholder="Write your reply..." maxlength="10000"></textarea>
+        <div class="forum-form-actions">
+          <button id="submit-reply-btn" class="forum-btn">Reply</button>
+        </div>
+        <p id="reply-error" class="forum-error"></p>
+      </div>
+    </div>
+
+    <div id="reply-login-notice" style="display:none">
+      <p class="forum-login-notice"><a href="/login">Log in</a> to post a reply.</p>
+    </div>
+
+  </main>
+</div>
+
+<script type="module">
+  import { API_BASE_URL } from './config.js';
+  import { auth, onAuthStateChanged } from './auth.js';
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function formatBody(s) {
+    return escapeHtml(s).replace(/\n/g, '<br>');
+  }
+
+  function timeAgo(dateStr) {
+    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff/86400)}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+  }
+
+  // Get thread ID from URL /thread/123
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  const threadId = pathParts[1];
+
+  if (!threadId) {
+    window.location.href = '/forum';
+  }
+
+  // Show reply form only when logged in
+  onAuthStateChanged(auth, (user) => {
+    document.getElementById('reply-section').style.display = user ? 'block' : 'none';
+    document.getElementById('reply-login-notice').style.display = user ? 'none' : 'block';
+  });
+
+  // Load thread
+  async function loadThread() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/forum/threads/${threadId}`);
+      if (!res.ok) throw new Error('Thread not found');
+      const { thread, posts } = await res.json();
+
+      document.title = `${thread.title} — GeoArchive Forum`;
+
+      document.getElementById('thread-container').innerHTML = `
+        <div class="thread-post thread-op">
+          <div class="thread-post-header">
+            <span class="thread-post-author"><a href="/user/${encodeURIComponent(thread.author_username)}">@${escapeHtml(thread.author_username)}</a></span>
+            <span class="thread-post-time">${timeAgo(thread.created_at)}</span>
+          </div>
+          <h2 class="thread-post-title">${escapeHtml(thread.title)}</h2>
+          <div class="thread-post-body">${formatBody(thread.body)}</div>
+        </div>
+      `;
+
+      renderPosts(posts);
+    } catch (err) {
+      document.getElementById('thread-container').innerHTML = '<p class="forum-error">Thread not found.</p>';
+    }
+  }
+
+  function renderPosts(posts) {
+    const container = document.getElementById('posts-container');
+    if (posts.length === 0) {
+      container.innerHTML = '<p class="forum-empty forum-no-replies">No replies yet.</p>';
+      return;
+    }
+    container.innerHTML = posts.map((p, i) => `
+      <div class="thread-post">
+        <div class="thread-post-header">
+          <span class="thread-post-number">#${i + 1}</span>
+          <span class="thread-post-author"><a href="/user/${encodeURIComponent(p.author_username)}">@${escapeHtml(p.author_username)}</a></span>
+          <span class="thread-post-time">${timeAgo(p.created_at)}</span>
+        </div>
+        <div class="thread-post-body">${formatBody(p.body)}</div>
+      </div>
+    `).join('');
+  }
+
+  // Submit reply
+  document.getElementById('submit-reply-btn').addEventListener('click', async () => {
+    const body = document.getElementById('reply-body').value.trim();
+    const errorEl = document.getElementById('reply-error');
+    const btn = document.getElementById('submit-reply-btn');
+
+    if (!body) { errorEl.textContent = 'Please write a reply.'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Posting...';
+    errorEl.textContent = '';
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(`${API_BASE_URL}/api/forum/threads/${threadId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ body })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        document.getElementById('reply-body').value = '';
+        await loadThread();
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      } else {
+        errorEl.textContent = data.error || 'Failed to post reply.';
+      }
+    } catch (err) {
+      errorEl.textContent = 'Network error. Please try again.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Reply';
+    }
+  });
+
+  loadThread();
+</script>
+
+</body>
+</html>
