@@ -222,7 +222,7 @@ a {
 /* Map container */
 .minimapcontainer {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
   padding: 10px 0 8px;
 }
@@ -236,43 +236,19 @@ a {
   border-radius: 14px;
 }
 
-/* Static image wrapper */
-.minimap-static-wrap {
-  position: relative;
-  display: block;
-}
-
-/* Static image */
-.minimap-static {
+/* The actual Leaflet container */
+.minimap {
   width: min(900px, 92vw);
   height: 560px;
-  object-fit: cover;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 14px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
-  display: block;
+  overflow: hidden;
+}
+
+/* Give it a "preview" feel */
+.minimap-preview {
   filter: grayscale(35%) contrast(0.95) brightness(0.98);
-  vertical-align: bottom;
-}
-
-/* OSM attribution */
-.minimap-attribution {
-  display: block;
-  text-align: right;
-  font-size: 0.72rem;
-  color: #888;
-  margin-top: 2px;
-  margin-right: 4px;
-  padding-right: 4px;
-}
-
-.minimap-attribution a {
-  color: #888;
-  text-decoration: none;
-}
-
-.minimap-attribution a:hover {
-  text-decoration: underline;
 }
 
 /* Overlay */
@@ -329,6 +305,25 @@ a {
   border-radius: 14px;
 }
 
+/* OSM attribution */
+.minimap-attribution {
+  width: min(900px, 92vw);
+  text-align: right;
+  font-size: 0.72rem;
+  color: #888;
+  margin-top: 4px;
+  padding-right: 16px;
+}
+
+.minimap-attribution a {
+  color: #888;
+  text-decoration: none;
+}
+
+.minimap-attribution a:hover {
+  text-decoration: underline;
+}
+
 /* Post-map line */
 .front-volunteers {
   text-align: center;
@@ -359,7 +354,7 @@ a {
     font-size: 1.12rem;
   }
 
-  .minimap-static {
+  .minimap {
     height: 460px;
   }
 }
@@ -3306,3 +3301,7 @@ body.database #historyModal .modal-content::-webkit-scrollbar-thumb:hover {
 
   border-radius: 4px !important;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+
+  margin: 0 !important;              /* ✅ no bottom gap */
+  object-fit: cover !important;
+}
